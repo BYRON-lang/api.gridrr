@@ -46,9 +46,10 @@ const getAllPosts = async (options = {}) => {
   if (tags) {
     let tagList = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean);
     if (tagList.length > 0) {
-      // Check if tags array contains any of the requested tags
-      params.push(tagList);
-      where.push(`tags && $${params.length}::jsonb`);
+      // Use jsonb ?| array[...] for tags stored as JSON string
+      const tagParams = tagList.map((_, i) => `$${params.length + i + 1}`).join(',');
+      where.push(`tags::jsonb ?| array[${tagParams}]`);
+      params.push(...tagList);
     }
   }
 
@@ -56,17 +57,11 @@ const getAllPosts = async (options = {}) => {
     query += ' WHERE ' + where.join(' AND ');
   }
 
-  // Sorting
-  if (sort === 'popular') {
-    query += ' ORDER BY views DESC NULLS LAST, created_at DESC';
-  } else if (sort === 'liked') {
-    query += ' ORDER BY likes DESC NULLS LAST, created_at DESC';
-  } else {
-    query += ' ORDER BY created_at DESC';
-  }
+  // Always order by created_at DESC in SQL
+  query += ' ORDER BY created_at DESC';
 
   const result = await pool.query(query, params);
-  const posts = result.rows;
+  let posts = result.rows;
 
   // Add views count to each post
   for (const post of posts) {
@@ -83,6 +78,15 @@ const getAllPosts = async (options = {}) => {
       try { post.image_urls = JSON.parse(post.image_urls); } catch { post.image_urls = []; }
     }
   }
+
+  // Sort in JS if needed
+  if (sort === 'popular') {
+    posts = posts.sort((a, b) => (b.views || 0) - (a.views || 0) || new Date(b.created_at) - new Date(a.created_at));
+  } else if (sort === 'liked') {
+    // If likes are not precomputed, set to 0
+    posts = posts.sort((a, b) => (b.likes || 0) - (a.likes || 0) || new Date(b.created_at) - new Date(a.created_at));
+  }
+
   console.log('Fetched posts:', posts.map(p => ({ id: p.id, title: p.title, tags: p.tags, image_urls: p.image_urls })));
   return posts;
 };
