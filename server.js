@@ -16,10 +16,18 @@ app.use(cookieParser());
 
 // CORS configuration
 app.use(cors({
-  origin: [
-    'https://gridrr.com',
-    'https://www.gridrr.com'
-  ],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'https://gridrr.com',
+      'https://www.gridrr.com',
+      'http://localhost:3000' // TEMP: Allow localhost for landing page fixes. REMOVE BEFORE GOING LIVE.
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
