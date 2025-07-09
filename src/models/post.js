@@ -29,8 +29,43 @@ const getPostsByUser = async (userId) => {
   return posts;
 };
 
-const getAllPosts = async () => {
-  const result = await pool.query('SELECT * FROM posts ORDER BY created_at DESC');
+// Updated getAllPosts to support search, filter, and sort
+const getAllPosts = async (options = {}) => {
+  let { q, tags, sort } = options;
+  let query = 'SELECT * FROM posts';
+  let where = [];
+  let params = [];
+
+  // Search by text in title
+  if (q) {
+    params.push(`%${q}%`);
+    where.push(`LOWER(title) LIKE LOWER($${params.length})`);
+  }
+
+  // Filter by tags (comma-separated)
+  if (tags) {
+    let tagList = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean);
+    if (tagList.length > 0) {
+      // Check if tags array contains any of the requested tags
+      params.push(tagList);
+      where.push(`tags && $${params.length}::jsonb`);
+    }
+  }
+
+  if (where.length > 0) {
+    query += ' WHERE ' + where.join(' AND ');
+  }
+
+  // Sorting
+  if (sort === 'popular') {
+    query += ' ORDER BY views DESC NULLS LAST, created_at DESC';
+  } else if (sort === 'liked') {
+    query += ' ORDER BY likes DESC NULLS LAST, created_at DESC';
+  } else {
+    query += ' ORDER BY created_at DESC';
+  }
+
+  const result = await pool.query(query, params);
   const posts = result.rows;
 
   // Add views count to each post

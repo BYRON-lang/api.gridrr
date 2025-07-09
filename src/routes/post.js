@@ -79,10 +79,11 @@ router.post(
   }
 );
 
-// Get all posts
+// Get all posts with search, filter, and sort
 router.get('/', async (req, res) => {
   try {
-    const posts = await getAllPosts();
+    const { q, tags, sort } = req.query;
+    const posts = await getAllPosts({ q, tags, sort });
     res.json(posts);
   } catch (error) {
     console.error('Get posts error:', error);
