@@ -18,13 +18,20 @@ const getPostsByUser = async (userId) => {
   const result = await pool.query('SELECT * FROM posts WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
   const posts = result.rows;
 
-  // Add views count to each post
+  // Add views count and parse tags/image_urls for each post
   for (const post of posts) {
     const viewsResult = await pool.query(
       'SELECT COUNT(DISTINCT user_id) as count FROM post_views WHERE post_id = $1 AND user_id IS NOT NULL',
       [post.id]
     );
     post.views = parseInt(viewsResult.rows[0].count) || 0;
+    // Parse tags and image_urls
+    if (post.tags && typeof post.tags === 'string') {
+      try { post.tags = JSON.parse(post.tags); } catch { post.tags = []; }
+    }
+    if (post.image_urls && typeof post.image_urls === 'string') {
+      try { post.image_urls = JSON.parse(post.image_urls); } catch { post.image_urls = []; }
+    }
   }
   return posts;
 };
