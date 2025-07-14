@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
+const compression = require('compression');
 const { initializeDatabase } = require('./src/config/database');
 
 // Load environment variables
@@ -32,6 +33,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// Enable gzip compression for all responses
+app.use(compression());
 
 // Routes
 app.use('/api/auth', require('./src/routes/auth'));

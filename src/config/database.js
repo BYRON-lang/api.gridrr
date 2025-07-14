@@ -70,6 +70,12 @@ const createTables = async () => {
       )
     `);
 
+    // Add indexes for performance
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at)');
+    // If tags is stored as JSON or array, use GIN index. If TEXT, skip or convert to JSONB for better search.
+    // await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_tags ON posts USING gin(tags jsonb_path_ops)');
+
     // Create post_likes table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS post_likes (

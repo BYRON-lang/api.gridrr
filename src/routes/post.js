@@ -54,7 +54,10 @@ router.post(
         const filePath = `posts/${Date.now()}_${file.originalname}`;
         const blob = bucket.file(filePath);
         const blobStream = blob.createWriteStream({
-          metadata: { contentType: file.mimetype },
+          metadata: {
+            contentType: file.mimetype,
+            cacheControl: 'public, max-age=31536000',
+          },
         });
         blobStream.end(file.buffer);
         await new Promise((resolve, reject) => {
@@ -84,7 +87,17 @@ router.get('/', async (req, res) => {
   try {
     const { q, tags, sort } = req.query;
     const posts = await getAllPosts({ q, tags, sort });
-    res.json(posts);
+    // Only send necessary fields
+    const minimalPosts = posts.map(post => ({
+      id: post.id,
+      title: post.title,
+      tags: post.tags,
+      image_urls: post.image_urls,
+      created_at: post.created_at,
+      views: post.views,
+      likes: post.likes || 0,
+    }));
+    res.json(minimalPosts);
   } catch (error) {
     console.error('Get posts error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -96,7 +109,17 @@ router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const posts = await getPostsByUser(userId);
-    res.json(posts);
+    // Only send necessary fields
+    const minimalPosts = posts.map(post => ({
+      id: post.id,
+      title: post.title,
+      tags: post.tags,
+      image_urls: post.image_urls,
+      created_at: post.created_at,
+      views: post.views,
+      likes: post.likes || 0,
+    }));
+    res.json(minimalPosts);
   } catch (error) {
     console.error('Get user posts error:', error);
     res.status(500).json({ error: 'Internal server error' });
