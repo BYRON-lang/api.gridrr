@@ -298,6 +298,29 @@ const likePost = async (postId, userId) => {
   }
 };
 
+// Create a comment for a post
+const createComment = async (postId, userId, content) => {
+  const result = await pool.query(
+    'INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3) RETURNING *',
+    [postId, userId, content]
+  );
+  return result.rows[0];
+};
+
+// Get all comments for a post, newest first, with user info
+const getCommentsByPostId = async (postId) => {
+  const result = await pool.query(
+    `SELECT c.*, u.first_name, u.last_name, u.email, p.display_name, p.avatar_url
+     FROM comments c
+     JOIN users u ON c.user_id = u.id
+     LEFT JOIN profiles p ON u.id = p.user_id
+     WHERE c.post_id = $1
+     ORDER BY c.created_at DESC`,
+    [postId]
+  );
+  return result.rows;
+};
+
 module.exports = {
   createPost,
   getPostsByUser,
@@ -306,4 +329,6 @@ module.exports = {
   likePost,
   incrementPostViews,
   hasUserViewedPost,
+  createComment,
+  getCommentsByPostId,
 }; 

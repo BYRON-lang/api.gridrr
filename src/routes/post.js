@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { createPost, getAllPosts, getPostById, likePost, getPostsByUser } = require('../models/post');
+const { createPost, getAllPosts, getPostById, likePost, getPostsByUser, createComment, getCommentsByPostId } = require('../models/post');
 const auth = require('./auth');
 const authenticateToken = auth.authenticateToken;
 const multer = require('multer');
@@ -241,6 +241,35 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Like post error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get comments for a post
+router.get('/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comments = await getCommentsByPostId(id);
+    res.json({ success: true, data: comments });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Add a comment to a post
+router.post('/:id/comments', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const { content } = req.body;
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      return res.status(400).json({ success: false, error: 'Content is required.' });
+    }
+    const comment = await createComment(id, userId, content.trim());
+    res.status(201).json({ success: true, data: comment });
+  } catch (error) {
+    console.error('Create comment error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
