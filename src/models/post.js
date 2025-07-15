@@ -307,18 +307,23 @@ const createComment = async (postId, userId, content) => {
   return result.rows[0];
 };
 
-// Get all comments for a post, newest first, with user info
-const getCommentsByPostId = async (postId) => {
+// Get all comments for a post, newest first, with user info, with pagination
+const getCommentsByPostId = async (postId, limit = 10, offset = 0) => {
+  // Get total count
+  const countResult = await pool.query('SELECT COUNT(*) FROM comments WHERE post_id = $1', [postId]);
+  const total = parseInt(countResult.rows[0].count, 10);
+  // Get paginated comments
   const result = await pool.query(
     `SELECT c.*, u.first_name, u.last_name, u.email, p.display_name, p.avatar_url
      FROM comments c
      JOIN users u ON c.user_id = u.id
      LEFT JOIN profiles p ON u.id = p.user_id
      WHERE c.post_id = $1
-     ORDER BY c.created_at DESC`,
-    [postId]
+     ORDER BY c.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [postId, limit, offset]
   );
-  return result.rows;
+  return { comments: result.rows, total };
 };
 
 module.exports = {

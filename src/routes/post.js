@@ -248,8 +248,10 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
 router.get('/:id/comments', async (req, res) => {
   try {
     const { id } = req.params;
-    const comments = await getCommentsByPostId(id);
-    res.json({ success: true, data: comments });
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
+    const { comments, total } = await getCommentsByPostId(id, limit, offset);
+    res.json({ success: true, data: comments, total });
   } catch (error) {
     console.error('Get comments error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });

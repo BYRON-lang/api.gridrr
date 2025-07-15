@@ -86,7 +86,28 @@ const upsertProfile = async (userId, profile) => {
   return result.rows[0];
 };
 
+const getProfileByDisplayName = async (displayName, currentUserId = null) => {
+  const result = await pool.query('SELECT * FROM profiles WHERE display_name = $1', [displayName]);
+  const profile = result.rows[0];
+  if (profile) {
+    const followerCount = await getFollowerCount(profile.user_id);
+    const followingCount = await getFollowingCount(profile.user_id);
+    let isFollowing = false;
+    if (currentUserId && currentUserId !== profile.user_id) {
+      isFollowing = await checkIsFollowing(currentUserId, profile.user_id);
+    }
+    return {
+      ...profile,
+      follower_count: followerCount,
+      following_count: followingCount,
+      is_following: isFollowing
+    };
+  }
+  return profile;
+};
+
 module.exports = {
   getProfileByUserId,
   upsertProfile,
+  getProfileByDisplayName,
 }; 
