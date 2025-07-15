@@ -96,9 +96,16 @@ const getProfileByDisplayName = async (displayName, currentUserId = null) => {
     if (currentUserId && currentUserId !== profile.user_id) {
       isFollowing = await checkIsFollowing(currentUserId, profile.user_id);
     }
+    // Debug: Log user_id
+    console.log('[Profile Likes Debug] user_id:', profile.user_id);
+    // Get all post IDs for this user
+    const postIdsResult = await pool.query('SELECT id FROM posts WHERE user_id = $1', [profile.user_id]);
+    const postIds = postIdsResult.rows.map(row => row.id);
+    console.log('[Profile Likes Debug] post IDs:', postIds);
     // Calculate total likes for all posts by this user
-    const likesResult = await pool.query('SELECT COUNT(*) as total_likes FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE user_id = $1)', [profile.user_id]);
+    const likesResult = await pool.query('SELECT COUNT(*) as total_likes FROM post_likes WHERE post_id = ANY($1::int[])', [postIds.length > 0 ? postIds : [0]]);
     const totalLikes = parseInt(likesResult.rows[0].total_likes) || 0;
+    console.log('[Profile Likes Debug] total_likes:', totalLikes);
     return {
       ...profile,
       follower_count: followerCount,
