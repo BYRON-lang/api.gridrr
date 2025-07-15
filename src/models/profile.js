@@ -96,11 +96,15 @@ const getProfileByDisplayName = async (displayName, currentUserId = null) => {
     if (currentUserId && currentUserId !== profile.user_id) {
       isFollowing = await checkIsFollowing(currentUserId, profile.user_id);
     }
+    // Calculate total likes for all posts by this user
+    const likesResult = await pool.query('SELECT COUNT(*) as total_likes FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE user_id = $1)', [profile.user_id]);
+    const totalLikes = parseInt(likesResult.rows[0].total_likes) || 0;
     return {
       ...profile,
       follower_count: followerCount,
       following_count: followingCount,
-      is_following: isFollowing
+      is_following: isFollowing,
+      total_likes: totalLikes
     };
   }
   return profile;
