@@ -4,9 +4,7 @@ const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const compression = require('compression');
 const { initializeDatabase } = require('./src/config/database');
-const prerender = require('prerender-node');
 const path = require('path');
-prerender.set('prerenderToken', 'ETUgIuLQ9YK3T13BLWt2');
 
 // Load environment variables
 dotenv.config();
@@ -38,7 +36,6 @@ app.use(cors({
 }));
 // Enable gzip compression for all responses
 app.use(compression());
-app.use(prerender);
 
 // Serve static files from the React app build
 app.use(express.static(path.join(__dirname, '../gridrr/build')));
