@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const compression = require('compression');
 const { initializeDatabase } = require('./src/config/database');
 const prerender = require('prerender-node');
+const path = require('path');
 prerender.set('prerenderToken', 'ETUgIuLQ9YK3T13BLWt2');
 
 // Load environment variables
@@ -38,6 +39,14 @@ app.use(cors({
 // Enable gzip compression for all responses
 app.use(compression());
 app.use(prerender);
+
+// Serve static files from the React app build
+app.use(express.static(path.join(__dirname, '../gridrr/build')));
+
+// Catch-all handler: send back React's index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../gridrr/build', 'index.html'));
+});
 
 // Routes
 app.use('/api/auth', require('./src/routes/auth'));
