@@ -46,8 +46,8 @@ const adminAuthRoutes = require('./src/routes/admin/auth');
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', require('./src/routes/profile'));
 app.use('/api/posts', require('./src/routes/post'));
-app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
