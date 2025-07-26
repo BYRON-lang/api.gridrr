@@ -289,14 +289,13 @@ router.get('/analytics/overview', async (req, res) => {
     const visits7d = formatVisits(visits7dRaw.rows, 7);
     // Posts by category aggregation
     const postsByCategoryRaw = await pool.query(`
-      SELECT unnest(tags) as category, COUNT(*) as count
+      SELECT tag as category, COUNT(*) as count
       FROM (
-        SELECT CASE WHEN jsonb_typeof(tags) = 'array' THEN array_agg(jsonb_array_elements_text(tags::jsonb))
-                    ELSE ARRAY[]::text[] END as tags
+        SELECT jsonb_array_elements_text(tags::jsonb) as tag
         FROM posts
+        WHERE tags IS NOT NULL AND tags != 'null'
       ) t
-      WHERE array_length(tags, 1) > 0
-      GROUP BY category
+      GROUP BY tag
       ORDER BY count DESC
       LIMIT 10
     `);
