@@ -42,4 +42,14 @@ router.post('/verify/:userId', async (req, res) => {
   }
 });
 
+// Unverify any user (admin tool)
+router.post('/unverify/:userId', async (req, res) => {
+  try {
+    await pool.query('UPDATE users SET verified = FALSE WHERE id = $1', [req.params.userId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to unverify user' });
+  }
+});
+
 module.exports = router;
