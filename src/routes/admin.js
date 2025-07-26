@@ -478,13 +478,14 @@ router.get('/analytics/engagement', async (req, res) => {
   try {
     // Avg. posts per user
     const usersRaw = await pool.query('SELECT COUNT(*) as count FROM users');
-    const postsRaw = await pool.query('SELECT COUNT(*) as count FROM posts');
-    const commentsRaw = await pool.query('SELECT COUNT(*) as count FROM comments');
+    // Posts/comments in last 30 days
+    const postsRaw = await pool.query(`SELECT COUNT(*) as count FROM posts WHERE created_at >= NOW() - INTERVAL '30 days'`);
+    const commentsRaw = await pool.query(`SELECT COUNT(*) as count FROM comments WHERE created_at >= NOW() - INTERVAL '30 days'`);
     const users = parseInt(usersRaw.rows[0].count) || 1;
     const posts = parseInt(postsRaw.rows[0].count) || 0;
     const comments = parseInt(commentsRaw.rows[0].count) || 0;
-    const avgPosts = (posts / users).toFixed(2);
-    const avgComments = (comments / users).toFixed(2);
+    const avgPosts = (posts / (users * 30)).toFixed(4);
+    const avgComments = (comments / (users * 30)).toFixed(4);
 
     // Most active time (hour of day with most analytics events in last 30 days)
     const activeTimeRaw = await pool.query(`
