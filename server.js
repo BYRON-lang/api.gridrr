@@ -50,10 +50,8 @@ app.use('/api/analytics', require('./src/routes/analytics'));
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
-});
+// System health API endpoint
+app.use('/api/health', require('./src/routes/health'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
