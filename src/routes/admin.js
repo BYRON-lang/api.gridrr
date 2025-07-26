@@ -108,6 +108,7 @@ router.get('/users', async (req, res) => {
         u.email, 
         u.created_at,
         u.updated_at,
+        u.verified,
         p.avatar_url,
         p.display_name,
         p.profile_type,
@@ -180,6 +181,7 @@ router.get('/users', async (req, res) => {
           username: user.email.split('@')[0],
           role: user.profile_type || 'user',
           status: 'active', // Default status since we don't have status field
+          verified: user.verified || false,
           avatar: user.avatar_url,
           country: '', // No country field in current schema
           joinedOn: user.created_at,

@@ -1,7 +1,12 @@
 const { pool } = require('../config/database');
 
 const getProfileByUserId = async (userId, currentUserId = null) => {
-  const result = await pool.query('SELECT * FROM profiles WHERE user_id = $1', [userId]);
+  const result = await pool.query(`
+    SELECT p.*, u.verified 
+    FROM profiles p 
+    JOIN users u ON p.user_id = u.id 
+    WHERE p.user_id = $1
+  `, [userId]);
   const profile = result.rows[0];
   
   if (profile) {
@@ -87,7 +92,12 @@ const upsertProfile = async (userId, profile) => {
 };
 
 const getProfileByDisplayName = async (displayName, currentUserId = null) => {
-  const result = await pool.query('SELECT * FROM profiles WHERE display_name = $1', [displayName]);
+  const result = await pool.query(`
+    SELECT p.*, u.verified 
+    FROM profiles p 
+    JOIN users u ON p.user_id = u.id 
+    WHERE p.display_name = $1
+  `, [displayName]);
   const profile = result.rows[0];
   if (profile) {
     const followerCount = await getFollowerCount(profile.user_id);
@@ -121,4 +131,4 @@ module.exports = {
   getProfileByUserId,
   upsertProfile,
   getProfileByDisplayName,
-}; 
+};
