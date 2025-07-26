@@ -36,12 +36,18 @@ app.use(cors({
 // Enable gzip compression for all responses
 app.use(compression());
 
+// Import routes
+const authRoutes = require('./src/routes/auth');
+const userRoutes = require('./src/routes/users');
+const adminRoutes = require('./src/routes/admin');
+const adminAuthRoutes = require('./src/routes/admin-auth');
+
 // Routes
-app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/auth', authRoutes);
 app.use('/api/profile', require('./src/routes/profile'));
 app.use('/api/posts', require('./src/routes/post'));
-app.use('/api/admin', require('./src/routes/admin'));
-app.use('/api/admin/auth', require('./src/routes/admin-auth'));
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin/auth', adminAuthRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
