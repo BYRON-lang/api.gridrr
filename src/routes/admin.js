@@ -301,6 +301,52 @@ router.get('/analytics/overview', async (req, res) => {
     `);
     const postsByCategory = postsByCategoryRaw.rows.map(row => ({ name: row.category, value: parseInt(row.count) }));
 
+    // Users chart (last 7 days)
+    const usersChartRaw = await pool.query(`
+      SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') as day, COUNT(*) as value
+      FROM users
+      WHERE created_at >= NOW() - INTERVAL '7 days'
+      GROUP BY day
+      ORDER BY day ASC
+    `);
+    const usersChart = usersChartRaw.rows.map(row => ({ name: row.day, value: parseInt(row.value) }));
+    // Posts chart (last 7 days)
+    const postsChartRaw = await pool.query(`
+      SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') as day, COUNT(*) as value
+      FROM posts
+      WHERE created_at >= NOW() - INTERVAL '7 days'
+      GROUP BY day
+      ORDER BY day ASC
+    `);
+    const postsChart = postsChartRaw.rows.map(row => ({ name: row.day, value: parseInt(row.value) }));
+    // Active users chart (last 7 days)
+    const activeUsersChartRaw = await pool.query(`
+      SELECT TO_CHAR(DATE_TRUNC('day', timestamp), 'YYYY-MM-DD') as day, COUNT(DISTINCT user_id) as value
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '7 days'
+      GROUP BY day
+      ORDER BY day ASC
+    `, [app]);
+    const activeUsersChart = activeUsersChartRaw.rows.map(row => ({ name: row.day, value: parseInt(row.value) }));
+    // Visits chart (last 7 days)
+    const visitsChartRaw = await pool.query(`
+      SELECT TO_CHAR(DATE_TRUNC('day', timestamp), 'YYYY-MM-DD') as day, COUNT(*) as value
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '7 days'
+      GROUP BY day
+      ORDER BY day ASC
+    `, [app]);
+    const visitsChart = visitsChartRaw.rows.map(row => ({ name: row.day, value: parseInt(row.value) }));
+    // Countries chart (top 5 last 7 days)
+    const countriesChartRaw = await pool.query(`
+      SELECT country as name, COUNT(*) as value
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '7 days'
+      GROUP BY country
+      ORDER BY value DESC
+      LIMIT 5
+    `, [app]);
+    const countriesChart = countriesChartRaw.rows.map(row => ({ name: row.name, value: parseInt(row.value) }));
     // Total users
     const users = await pool.query('SELECT COUNT(*) FROM users');
     // Total posts
@@ -361,7 +407,12 @@ router.get('/analytics/overview', async (req, res) => {
         last7d: visits7d.rows
       },
       postsByCategory,
-      recent: recent.rows
+      recent: recent.rows,
+      usersChart,
+      postsChart,
+      activeUsersChart,
+      visitsChart,
+      countriesChart
     });
   } catch (error) {
     console.error('Error fetching analytics overview:', error);
