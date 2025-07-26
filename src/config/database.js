@@ -175,7 +175,12 @@ const createTables = async () => {
       `);
       if (!deviceTypeColumnExists.rows[0].exists) {
         console.log("Migrating analytics table to include 'deviceType' column...");
-        await pool.query(`ALTER TABLE analytics ADD COLUMN deviceType VARCHAR(20) DEFAULT 'desktop'`);
+        try {
+          await pool.query(`ALTER TABLE analytics ADD COLUMN deviceType VARCHAR(20) DEFAULT 'desktop'`);
+        } catch (err) {
+          if (err.code !== '42701') throw err; // 42701 = duplicate_column
+          console.log("deviceType column already exists, skipping migration.");
+        }
         await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_deviceType ON analytics (deviceType)');
         console.log("Analytics table migration for deviceType completed");
       }
