@@ -41,7 +41,7 @@ const path = require('path');
 const authRoutes = require('./src/routes/auth');
 const userRoutes = require('./src/routes/users');
 const adminRoutes = require('./src/routes/admin');
-const adminAuthRoutes = require('./src/routes/admin-auth');
+const adminAuthRoutes = require('./src/routes/admin/auth');
 
 // Routes
 app.use('/api/auth', authRoutes);
