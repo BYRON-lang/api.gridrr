@@ -218,11 +218,11 @@ router.get('/live-users', async (req, res) => {
 
 // Record analytics data
 router.post('/analytics', async (req, res) => {
-  const { userId, country, page, referrer, userAgent } = req.body;
+  const { userId, country, page, referrer, userAgent, app } = req.body;
   try {
     await pool.query(
-      'INSERT INTO analytics (user_id, country, page, referrer, user_agent) VALUES ($1, $2, $3, $4, $5)',
-      [userId || null, country, page, referrer, userAgent]
+      'INSERT INTO analytics (user_id, country, page, referrer, user_agent, app) VALUES ($1, $2, $3, $4, $5, $6)',
+      [userId || null, country, page, referrer, userAgent, app || 'gridrr']
     );
     res.status(201).json({ message: 'Analytics recorded' });
   } catch (error) {
@@ -234,14 +234,45 @@ router.post('/analytics', async (req, res) => {
 // Get analytics overview stats
 router.get('/analytics/overview', async (req, res) => {
   try {
-    const total = await pool.query('SELECT COUNT(*) FROM analytics');
-    const byCountry = await pool.query('SELECT country, COUNT(*) FROM analytics GROUP BY country ORDER BY COUNT(*) DESC');
-    const byPage = await pool.query('SELECT page, COUNT(*) FROM analytics GROUP BY page ORDER BY COUNT(*) DESC');
-    const recent = await pool.query('SELECT * FROM analytics ORDER BY timestamp DESC LIMIT 10');
+    // Only count analytics for the main app
+    const app = 'gridrr';
+    // Total visits (all time)
+    const totalVisits = await pool.query('SELECT COUNT(*) FROM analytics WHERE app = $1', [app]);
+    // Top countries
+    const topCountries = await pool.query('SELECT country, COUNT(*) as count FROM analytics WHERE app = $1 GROUP BY country ORDER BY count DESC LIMIT 5', [app]);
+    // Active users today (unique user_id or by IP if anonymous)
+    const activeUsersToday = await pool.query(`SELECT COUNT(DISTINCT user_id) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '1 day'`, [app]);
+    // Recent visits (for table)
+    const recent = await pool.query('SELECT * FROM analytics WHERE app = $1 ORDER BY timestamp DESC LIMIT 10', [app]);
+    // Visits for graph (last 90d, 30d, 7d)
+    const visits90d = await pool.query(`SELECT DATE_TRUNC('day', timestamp) AS day, COUNT(*) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '90 days' GROUP BY day ORDER BY day ASC`, [app]);
+    const visits30d = await pool.query(`SELECT DATE_TRUNC('day', timestamp) AS day, COUNT(*) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day ASC`, [app]);
+    const visits7d = await pool.query(`SELECT DATE_TRUNC('day', timestamp) AS day, COUNT(*) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '7 days' GROUP BY day ORDER BY day ASC`, [app]);
+    // Total users
+    const users = await pool.query('SELECT COUNT(*) FROM users');
+    // Total posts
+    const posts = await pool.query('SELECT COUNT(*) FROM posts');
+    // Trending posts (top liked in last 7 days)
+    const trendingPosts = await pool.query(`
+      SELECT p.*, COUNT(l.id) AS like_count
+      FROM posts p
+      LEFT JOIN post_likes l ON p.id = l.post_id AND l.created_at >= NOW() - INTERVAL '7 days'
+      GROUP BY p.id
+      ORDER BY like_count DESC
+      LIMIT 5
+    `);
     res.json({
-      total: parseInt(total.rows[0].count),
-      byCountry: byCountry.rows,
-      byPage: byPage.rows,
+      totalUsers: parseInt(users.rows[0].count),
+      totalPosts: parseInt(posts.rows[0].count),
+      activeUsersToday: parseInt(activeUsersToday.rows[0].count),
+      totalVisits: parseInt(totalVisits.rows[0].count),
+      topCountries: topCountries.rows,
+      trendingPosts: trendingPosts.rows,
+      visitsGraph: {
+        last90d: visits90d.rows,
+        last30d: visits30d.rows,
+        last7d: visits7d.rows
+      },
       recent: recent.rows
     });
   } catch (error) {
