@@ -13,11 +13,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- Create index on email for faster lookups
 CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users (email);
 
--- Insert default admin user (password: Admin123)
--- The password will be hashed by the application on first run
-INSERT INTO admin_users (email, password_hash, name, role)
-VALUES ('admin@gridrr.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin User', 'superadmin')
-ON CONFLICT (email) DO NOTHING;
+-- NOTE: Super admin should be inserted manually after migration.
 
 -- Add any other necessary indexes or constraints
 COMMENT ON TABLE admin_users IS 'Stores admin user accounts for the admin dashboard';

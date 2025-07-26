@@ -1,13 +1,10 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { findAdminByEmail, verifyAdminPassword, updateLastLogin, ensureDefaultAdmin } = require('../../models/admin-user');
+const { findAdminByEmail, verifyAdminPassword, updateLastLogin } = require('../../models/admin-user');
 const { authenticateToken } = require('../../middleware/auth');
 
 const router = express.Router();
-
-// Ensure default admin exists when the server starts
-ensureDefaultAdmin();
 
 // Admin login
 router.post('/login', async (req, res) => {

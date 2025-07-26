@@ -84,6 +84,33 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Add new admin user (superadmin only)
+router.post('/users', async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Only superadmin can create admin users' });
+    }
+    const { email, password, name, role } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ message: 'Email, password, and name are required' });
+    }
+    const existing = await pool.query('SELECT id FROM admin_users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ message: 'Admin user with this email already exists' });
+    }
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO admin_users (email, password_hash, name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, role',
+      [email, hashedPassword, name, role || 'admin']
+    );
+    res.status(201).json({ message: 'Admin user created', user: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating admin user:', error);
+    res.status(500).json({ message: 'Error creating admin user' });
+  }
+});
+
 // Update user status
 router.patch('/users/:id/status', async (req, res) => {
   try {
