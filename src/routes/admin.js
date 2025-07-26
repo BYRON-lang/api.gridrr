@@ -253,7 +253,7 @@ router.get('/analytics/overview', async (req, res) => {
     // Total posts
     const posts = await pool.query('SELECT COUNT(*) FROM posts');
     // Trending posts (top liked in last 7 days)
-    const trendingPosts = await pool.query(`
+    const trendingRaw = await pool.query(`
       SELECT p.*, COUNT(l.id) AS like_count
       FROM posts p
       LEFT JOIN post_likes l ON p.id = l.post_id AND l.created_at >= NOW() - INTERVAL '7 days'
@@ -261,6 +261,37 @@ router.get('/analytics/overview', async (req, res) => {
       ORDER BY like_count DESC
       LIMIT 5
     `);
+    // For each trending post, fetch comments, views, and parse tags/images
+    const trendingPosts = await Promise.all(trendingRaw.rows.map(async (p) => {
+      // Comments count
+      const commentsRes = await pool.query('SELECT COUNT(*) FROM comments WHERE post_id = $1', [p.id]);
+      // Views count
+      const viewsRes = await pool.query('SELECT COUNT(DISTINCT user_id) FROM post_views WHERE post_id = $1', [p.id]);
+      // Parse tags
+      let tags = [];
+      if (p.tags && typeof p.tags === 'string') {
+        try { tags = JSON.parse(p.tags); } catch { tags = []; }
+      } else if (Array.isArray(p.tags)) {
+        tags = p.tags;
+      }
+      // Parse image_urls
+      let image = '';
+      if (p.image_urls && typeof p.image_urls === 'string') {
+        try { const arr = JSON.parse(p.image_urls); image = arr?.[0] || ''; } catch { image = ''; }
+      } else if (Array.isArray(p.image_urls)) {
+        image = p.image_urls[0] || '';
+      }
+      return {
+        id: p.id,
+        title: p.title,
+        tags,
+        image,
+        designer: p.designer || p.user_id,
+        like_count: parseInt(p.like_count) || 0,
+        comments: parseInt(commentsRes.rows[0].count) || 0,
+        views: parseInt(viewsRes.rows[0].count) || 0
+      };
+    }));
     res.json({
       totalUsers: parseInt(users.rows[0].count),
       totalPosts: parseInt(posts.rows[0].count),
