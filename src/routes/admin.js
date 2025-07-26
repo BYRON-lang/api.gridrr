@@ -298,7 +298,7 @@ router.get('/analytics/overview', async (req, res) => {
       activeUsersToday: parseInt(activeUsersToday.rows[0].count),
       totalVisits: parseInt(totalVisits.rows[0].count),
       topCountries: topCountries.rows,
-      trendingPosts: trendingPosts.rows,
+      trendingPosts: trendingPosts, // Fixed: trendingPosts is already an array
       visitsGraph: {
         last90d: visits90d.rows,
         last30d: visits30d.rows,
