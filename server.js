@@ -39,8 +39,11 @@ app.use(compression());
 // Import routes
 const path = require('path');
 const authRoutes = require('./src/routes/auth');
-const adminRoutes = require('./src/routes/admin');
 const adminAuthRoutes = require('./src/routes/admin/auth');
+const healthRoutes = require('./src/routes/health');
+const adminRoutes = require('./src/routes/admin');
+const employeesRoutes = require('./src/routes/employees');
+const verificationRoutes = require('./src/routes/verification');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -49,10 +52,9 @@ app.use('/api/posts', require('./src/routes/post'));
 app.use('/api/analytics', require('./src/routes/analytics'));
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin', adminRoutes);
-
-// System health API endpoint
-app.use('/api/health', require('./src/routes/health'));
-app.use('/api/employees', require('./src/routes/employees'));
+app.use('/api/health', healthRoutes);
+app.use('/api/employees', employeesRoutes);
+app.use('/api/verification', verificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

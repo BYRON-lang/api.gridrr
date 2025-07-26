@@ -26,6 +26,16 @@ const createTables = async () => {
       )
     `);
 
+    // Add verified column if missing
+    const userCols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='users'`);
+    const colNames = userCols.rows.map(r => r.column_name);
+    if (!colNames.includes('verified')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT FALSE`);
+    }
+    if (!colNames.includes('verification_requested')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN verification_requested BOOLEAN DEFAULT FALSE`);
+    }
+
     // Create refresh_tokens table for token rotation
     await pool.query(`
       CREATE TABLE IF NOT EXISTS refresh_tokens (
