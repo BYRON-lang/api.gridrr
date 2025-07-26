@@ -509,4 +509,30 @@ router.get('/analytics/engagement', async (req, res) => {
   }
 });
 
+// --- Analytics: Hourly Active Time for Bar Chart ---
+router.get('/analytics/active-time-hourly', async (req, res) => {
+  try {
+    const rows = await pool.query(`
+      SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '1 day'
+      GROUP BY hour
+      ORDER BY hour ASC
+    `, ['gridrr']);
+    // Fill missing hours with 0
+    const hourMap = {};
+    rows.rows.forEach(row => {
+      hourMap[parseInt(row.hour)] = parseInt(row.count);
+    });
+    const hourlyData = [];
+    for (let h = 0; h < 24; h++) {
+      hourlyData.push({ hour: h, count: hourMap[h] || 0 });
+    }
+    res.json(hourlyData);
+  } catch (error) {
+    console.error('Error fetching active time hourly:', error);
+    res.status(500).json({ message: 'Error fetching active time hourly' });
+  }
+});
+
 module.exports = router;
