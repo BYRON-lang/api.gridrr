@@ -287,16 +287,34 @@ router.get('/analytics/overview', async (req, res) => {
     const visits90d = formatVisits(visits90dRaw.rows, 90);
     const visits30d = formatVisits(visits30dRaw.rows, 30);
     const visits7d = formatVisits(visits7dRaw.rows, 7);
+    // Posts by category aggregation
+    const postsByCategoryRaw = await pool.query(`
+      SELECT unnest(tags) as category, COUNT(*) as count
+      FROM (
+        SELECT CASE WHEN jsonb_typeof(tags) = 'array' THEN array_agg(jsonb_array_elements_text(tags::jsonb))
+                    ELSE ARRAY[]::text[] END as tags
+        FROM posts
+      ) t
+      WHERE array_length(tags, 1) > 0
+      GROUP BY category
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+    const postsByCategory = postsByCategoryRaw.rows.map(row => ({ name: row.category, value: parseInt(row.count) }));
+
     // Total users
     const users = await pool.query('SELECT COUNT(*) FROM users');
     // Total posts
     const posts = await pool.query('SELECT COUNT(*) FROM posts');
     // Trending posts (top liked in last 7 days)
     const trendingRaw = await pool.query(`
-      SELECT p.*, COUNT(l.id) AS like_count
+      SELECT p.*, COUNT(l.id) AS like_count, 
+             COALESCE(pr.display_name, u.email) AS username
       FROM posts p
       LEFT JOIN post_likes l ON p.id = l.post_id AND l.created_at >= NOW() - INTERVAL '7 days'
-      GROUP BY p.id
+      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN profiles pr ON p.user_id = pr.user_id
+      GROUP BY p.id, username
       ORDER BY like_count DESC
       LIMIT 5
     `);
@@ -325,7 +343,7 @@ router.get('/analytics/overview', async (req, res) => {
         title: p.title,
         tags,
         image,
-        designer: p.designer || p.user_id,
+        username: p.username,
         like_count: parseInt(p.like_count) || 0,
         comments: parseInt(commentsRes.rows[0].count) || 0,
         views: parseInt(viewsRes.rows[0].count) || 0
@@ -343,6 +361,7 @@ router.get('/analytics/overview', async (req, res) => {
         last30d: visits30d.rows,
         last7d: visits7d.rows
       },
+      postsByCategory,
       recent: recent.rows
     });
   } catch (error) {
