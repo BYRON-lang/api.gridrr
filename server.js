@@ -40,6 +40,7 @@ app.use(compression());
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/profile', require('./src/routes/profile'));
 app.use('/api/posts', require('./src/routes/post'));
+app.use('/api/admin', require('./src/routes/admin'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
