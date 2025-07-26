@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { findAdminByEmail } = require('../models/admin-user');
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -18,6 +19,36 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Middleware to verify admin user
+const requireAdmin = async (req, res, next) => {
+  try {
+    const admin = await findAdminByEmail(req.user?.email);
+    if (!admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+  } catch (error) {
+    console.error('Admin auth error:', error);
+    res.status(500).json({ error: 'Authentication error' });
+  }
+};
+
+// Middleware to verify superadmin
+const requireSuperAdmin = async (req, res, next) => {
+  try {
+    const admin = await findAdminByEmail(req.user?.email);
+    if (!admin || admin.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Superadmin access required' });
+    }
+    next();
+  } catch (error) {
+    console.error('Superadmin auth error:', error);
+    res.status(500).json({ error: 'Authentication error' });
+  }
+};
+
 module.exports = {
-  authenticateToken
+  authenticateToken,
+  requireAdmin,
+  requireSuperAdmin
 };
