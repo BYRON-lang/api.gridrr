@@ -218,11 +218,11 @@ router.get('/live-users', async (req, res) => {
 
 // Record analytics data
 router.post('/analytics', async (req, res) => {
-  const { userId, country, page, referrer, userAgent, app } = req.body;
+  const { userId, country, page, referrer, userAgent, app, deviceType } = req.body;
   try {
     await pool.query(
-      'INSERT INTO analytics (user_id, country, page, referrer, user_agent, app) VALUES ($1, $2, $3, $4, $5, $6)',
-      [userId || null, country, page, referrer, userAgent, app || 'gridrr']
+      'INSERT INTO analytics (user_id, country, page, referrer, user_agent, app, deviceType) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [userId || null, country, page, referrer, userAgent, app || 'gridrr', deviceType || 'desktop']
     );
     res.status(201).json({ message: 'Analytics recorded' });
   } catch (error) {
@@ -244,10 +244,49 @@ router.get('/analytics/overview', async (req, res) => {
     const activeUsersToday = await pool.query(`SELECT COUNT(DISTINCT user_id) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '1 day'`, [app]);
     // Recent visits (for table)
     const recent = await pool.query('SELECT * FROM analytics WHERE app = $1 ORDER BY timestamp DESC LIMIT 10', [app]);
-    // Visits for graph (last 90d, 30d, 7d)
-    const visits90d = await pool.query(`SELECT DATE_TRUNC('day', timestamp) AS day, COUNT(*) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '90 days' GROUP BY day ORDER BY day ASC`, [app]);
-    const visits30d = await pool.query(`SELECT DATE_TRUNC('day', timestamp) AS day, COUNT(*) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day ASC`, [app]);
-    const visits7d = await pool.query(`SELECT DATE_TRUNC('day', timestamp) AS day, COUNT(*) FROM analytics WHERE app = $1 AND timestamp >= NOW() - INTERVAL '7 days' GROUP BY day ORDER BY day ASC`, [app]);
+    // Visits for graph (last 90d, 30d, 7d) split by deviceType
+    const visits90dRaw = await pool.query(`
+      SELECT DATE_TRUNC('day', timestamp) AS day, deviceType, COUNT(*) as count
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '90 days'
+      GROUP BY day, deviceType
+      ORDER BY day ASC
+    `, [app]);
+    const visits30dRaw = await pool.query(`
+      SELECT DATE_TRUNC('day', timestamp) AS day, deviceType, COUNT(*) as count
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '30 days'
+      GROUP BY day, deviceType
+      ORDER BY day ASC
+    `, [app]);
+    const visits7dRaw = await pool.query(`
+      SELECT DATE_TRUNC('day', timestamp) AS day, deviceType, COUNT(*) as count
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '7 days'
+      GROUP BY day, deviceType
+      ORDER BY day ASC
+    `, [app]);
+    // Helper to format visits by day/device
+    function formatVisits(raw, days) {
+      const map = {};
+      raw.forEach(row => {
+        const day = row.day.toISOString().split('T')[0];
+        if (!map[day]) map[day] = { day, desktop: 0, mobile: 0 };
+        map[day][row.devicetype === 'mobile' ? 'mobile' : 'desktop'] = parseInt(row.count);
+      });
+      // Fill missing days with 0s
+      const result = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayStr = d.toISOString().split('T')[0];
+        result.push(map[dayStr] || { day: dayStr, desktop: 0, mobile: 0 });
+      }
+      return result;
+    }
+    const visits90d = formatVisits(visits90dRaw.rows, 90);
+    const visits30d = formatVisits(visits30dRaw.rows, 30);
+    const visits7d = formatVisits(visits7dRaw.rows, 7);
     // Total users
     const users = await pool.query('SELECT COUNT(*) FROM users');
     // Total posts
