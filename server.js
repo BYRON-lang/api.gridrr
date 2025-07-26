@@ -52,6 +52,7 @@ app.use('/api/admin', adminRoutes);
 
 // System health API endpoint
 app.use('/api/health', require('./src/routes/health'));
+app.use('/api/employees', require('./src/routes/employees'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -37,6 +37,23 @@ const createTables = async () => {
       )
     `);
 
+    // Create employees table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS employees (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        role VARCHAR(50) NOT NULL CHECK (role IN ('admin','moderator','support','designer','engineer','hr','marketing','sales','legal','finance','it','product','qa','operations','intern','custom')),
+        department VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'active',
+        can_chat BOOLEAN DEFAULT true,
+        avatar_url TEXT,
+        last_active TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create admin_users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin_users (
