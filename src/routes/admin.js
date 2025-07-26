@@ -420,4 +420,93 @@ router.get('/analytics/overview', async (req, res) => {
   }
 });
 
+// --- Analytics: User Types (Returning vs New Users) ---
+router.get('/analytics/user-types', async (req, res) => {
+  try {
+    const app = 'gridrr';
+    // New users: first seen in last 7 days
+    const newUsersRaw = await pool.query(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM analytics
+      WHERE app = $1 AND user_id IS NOT NULL
+        AND DATE_TRUNC('day', timestamp) >= (SELECT MIN(DATE_TRUNC('day', timestamp)) FROM analytics WHERE app = $1)
+        AND timestamp >= NOW() - INTERVAL '7 days'
+    `, [app]);
+    // Returning users: seen before last 7 days but active in last 7 days
+    const returningUsersRaw = await pool.query(`
+      SELECT COUNT(DISTINCT a.user_id) as count
+      FROM analytics a
+      WHERE a.app = $1 AND a.user_id IS NOT NULL
+        AND a.timestamp >= NOW() - INTERVAL '7 days'
+        AND a.user_id IN (
+          SELECT user_id FROM analytics WHERE app = $1 AND user_id IS NOT NULL AND timestamp < NOW() - INTERVAL '7 days'
+        )
+    `, [app]);
+    const newUsers = parseInt(newUsersRaw.rows[0].count) || 0;
+    const returningUsers = parseInt(returningUsersRaw.rows[0].count) || 0;
+    res.json([
+      { name: 'New Users', value: newUsers },
+      { name: 'Returning Users', value: returningUsers }
+    ]);
+  } catch (error) {
+    console.error('Error fetching user types:', error);
+    res.status(500).json({ message: 'Error fetching user types' });
+  }
+});
+
+// --- Analytics: Referrer Breakdown ---
+router.get('/analytics/referrers', async (req, res) => {
+  try {
+    const app = 'gridrr';
+    const referrersRaw = await pool.query(`
+      SELECT COALESCE(referrer, 'Direct/Unknown') as name, COUNT(*) as value
+      FROM analytics
+      WHERE app = $1
+      GROUP BY name
+      ORDER BY value DESC
+      LIMIT 6
+    `, [app]);
+    res.json(referrersRaw.rows.map(row => ({ name: row.name, value: parseInt(row.value) })));
+  } catch (error) {
+    console.error('Error fetching referrer breakdown:', error);
+    res.status(500).json({ message: 'Error fetching referrer breakdown' });
+  }
+});
+
+// --- Analytics: User Engagement Stats ---
+router.get('/analytics/engagement', async (req, res) => {
+  try {
+    // Avg. posts per user
+    const usersRaw = await pool.query('SELECT COUNT(*) as count FROM users');
+    const postsRaw = await pool.query('SELECT COUNT(*) as count FROM posts');
+    const commentsRaw = await pool.query('SELECT COUNT(*) as count FROM comments');
+    const users = parseInt(usersRaw.rows[0].count) || 1;
+    const posts = parseInt(postsRaw.rows[0].count) || 0;
+    const comments = parseInt(commentsRaw.rows[0].count) || 0;
+    const avgPosts = (posts / users).toFixed(2);
+    const avgComments = (comments / users).toFixed(2);
+
+    // Most active time (hour of day with most analytics events in last 30 days)
+    const activeTimeRaw = await pool.query(`
+      SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
+      FROM analytics
+      WHERE app = $1 AND timestamp >= NOW() - INTERVAL '30 days'
+      GROUP BY hour
+      ORDER BY count DESC
+      LIMIT 1
+    `, ['gridrr']);
+    let activeHour = activeTimeRaw.rows[0] ? parseInt(activeTimeRaw.rows[0].hour) : null;
+    let activeTimeLabel = activeHour !== null ? `${activeHour}:00 - ${(activeHour+2)%24}:00` : 'N/A';
+
+    res.json({
+      avgPosts,
+      avgComments,
+      activeTime: activeTimeLabel
+    });
+  } catch (error) {
+    console.error('Error fetching engagement stats:', error);
+    res.status(500).json({ message: 'Error fetching engagement stats' });
+  }
+});
+
 module.exports = router;
