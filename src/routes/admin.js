@@ -205,16 +205,14 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
-// Get live user count (users active in last 5 minutes)
+// Get total registered user count
 router.get('/live-users', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT COUNT(*) FROM users WHERE updated_at >= NOW() - INTERVAL '5 minutes'`
-    );
+    const result = await pool.query('SELECT COUNT(*) FROM users');
     res.json({ liveUserCount: parseInt(result.rows[0].count) });
   } catch (error) {
-    console.error('Error fetching live user count:', error);
-    res.status(500).json({ message: 'Error fetching live user count' });
+    console.error('Error fetching user count:', error);
+    res.status(500).json({ message: 'Error fetching user count' });
   }
 });
 
