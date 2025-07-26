@@ -216,4 +216,38 @@ router.get('/live-users', async (req, res) => {
   }
 });
 
+// Record analytics data
+router.post('/analytics', async (req, res) => {
+  const { userId, country, page, referrer, userAgent } = req.body;
+  try {
+    await pool.query(
+      'INSERT INTO analytics (user_id, country, page, referrer, user_agent) VALUES ($1, $2, $3, $4, $5)',
+      [userId || null, country, page, referrer, userAgent]
+    );
+    res.status(201).json({ message: 'Analytics recorded' });
+  } catch (error) {
+    console.error('Error recording analytics:', error);
+    res.status(500).json({ message: 'Error recording analytics' });
+  }
+});
+
+// Get analytics overview stats
+router.get('/analytics/overview', async (req, res) => {
+  try {
+    const total = await pool.query('SELECT COUNT(*) FROM analytics');
+    const byCountry = await pool.query('SELECT country, COUNT(*) FROM analytics GROUP BY country ORDER BY COUNT(*) DESC');
+    const byPage = await pool.query('SELECT page, COUNT(*) FROM analytics GROUP BY page ORDER BY COUNT(*) DESC');
+    const recent = await pool.query('SELECT * FROM analytics ORDER BY timestamp DESC LIMIT 10');
+    res.json({
+      total: parseInt(total.rows[0].count),
+      byCountry: byCountry.rows,
+      byPage: byPage.rows,
+      recent: recent.rows
+    });
+  } catch (error) {
+    console.error('Error fetching analytics overview:', error);
+    res.status(500).json({ message: 'Error fetching analytics overview' });
+  }
+});
+
 module.exports = router;
