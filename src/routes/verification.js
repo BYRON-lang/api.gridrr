@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
 
 // Get all pending verification requests
 router.get('/requests', async (req, res) => {
@@ -33,7 +34,7 @@ router.post('/reject/:userId', async (req, res) => {
 });
 
 // Directly verify any user (admin tool)
-router.post('/verify/:userId', async (req, res) => {
+router.post('/verify/:userId', authenticateToken, async (req, res) => {
   try {
     await pool.query('UPDATE users SET verified = TRUE, verification_requested = FALSE WHERE id = $1', [req.params.userId]);
     res.json({ success: true });
@@ -43,7 +44,7 @@ router.post('/verify/:userId', async (req, res) => {
 });
 
 // Unverify any user (admin tool)
-router.post('/unverify/:userId', async (req, res) => {
+router.post('/unverify/:userId', authenticateToken, async (req, res) => {
   try {
     await pool.query('UPDATE users SET verified = FALSE WHERE id = $1', [req.params.userId]);
     res.json({ success: true });

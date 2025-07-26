@@ -16,6 +16,84 @@ const isAdmin = (req, res, next) => {
 router.use(authenticateToken);
 router.use(isAdmin);
 
+// Get a specific user by ID
+router.get('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const query = `
+      SELECT 
+        u.id, 
+        u.first_name, 
+        u.last_name, 
+        u.email, 
+        u.created_at,
+        u.updated_at,
+        u.verified,
+        p.avatar_url,
+        p.display_name,
+        p.profile_type,
+        p.bio,
+        p.expertise,
+        p.website,
+        p.twitter,
+        p.instagram,
+        p.linkedin,
+        p.facebook
+      FROM users u
+      LEFT JOIN profiles p ON u.id = p.user_id
+      WHERE u.id = $1
+    `;
+    
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    const user = result.rows[0];
+    
+    // Get follower counts
+    const followerQuery = `
+      SELECT 
+        COUNT(follower_id) as followers,
+        (SELECT COUNT(*) FROM user_follows WHERE follower_id = $1) as following
+      FROM user_follows
+      WHERE following_id = $1
+    `;
+    const followerResult = await pool.query(followerQuery, [id]);
+    const followerData = followerResult.rows[0] || { followers: 0, following: 0 };
+    
+    res.json({
+      id: user.id,
+      name: user.display_name || `${user.first_name} ${user.last_name}`.trim(),
+      email: user.email,
+      username: user.email.split('@')[0],
+      role: user.profile_type || 'user',
+      status: 'active', // Default status since we don't have status field
+      avatar: user.avatar_url,
+      country: '', // No country field in current schema
+      joinedOn: user.created_at,
+      lastLogin: user.updated_at, // Using updated_at as last activity
+      followers: parseInt(followerData.followers) || 0,
+      following: parseInt(followerData.following) || 0,
+      verified: user.verified || false,
+      bio: user.bio,
+      expertise: user.expertise,
+      website: user.website,
+      social: {
+        twitter: user.twitter,
+        instagram: user.instagram,
+        linkedin: user.linkedin,
+        facebook: user.facebook
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Error fetching user' });
+  }
+});
+
 // Get all users with pagination and search
 router.get('/users', async (req, res) => {
   try {
