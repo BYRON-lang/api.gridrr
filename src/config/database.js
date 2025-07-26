@@ -143,6 +143,29 @@ const createTables = async () => {
       )
     `);
 
+    // Ensure 'app' column exists in analytics table
+    const analyticsTableExists = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'analytics'
+      )
+    `);
+    if (analyticsTableExists.rows[0].exists) {
+      const appColumnExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'analytics' 
+          AND column_name = 'app'
+        )
+      `);
+      if (!appColumnExists.rows[0].exists) {
+        console.log("Migrating analytics table to include 'app' column...");
+        await pool.query(`ALTER TABLE analytics ADD COLUMN app VARCHAR(50) DEFAULT 'gridrr'`);
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_app ON analytics (app)');
+        console.log("Analytics table migration completed");
+      }
+    }
     console.log('Database tables created successfully');
   } catch (error) {
     console.error('Error creating tables:', error);
